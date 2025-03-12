@@ -1,129 +1,101 @@
-# Token types
-INTEGER, PLUS, MINUS, EOF = 'INTEGER', 'PLUS', 'MINUS', 'EOF'
-
 class Token:
-    def __init__(self, type, value):
-        # token type: INTEGER, PLUS, or EOF
-        self.type = type
-        # token value: integer (0, 1, 2, ..., 9), '+', or None
+    def __init__(self, type_, value):
+        self.type = type_
         self.value = value
 
     def __str__(self):
-        return f'Token({self.type}, {repr(self.value)})'
+        return f"Token({self.type}, {self.value})"
 
     def __repr__(self):
         return self.__str__()
 
-class Interpreter:
+INTEGER, MUL, DIV, EOF = 'INTEGER', 'MUL', 'DIV', 'EOF'
+
+class Lexer(object):
     def __init__(self, text):
-        # The input expression, e.g., "3+5"
         self.text = text
-        # self.pos is an index into self.text
         self.pos = 0
-        # current token instance
-        self.current_token = None
         self.current_char = self.text[self.pos]
 
-    def skip_whitespace(self):
-        while self.current_char is not None and self.current.isspace():
-            self.advance()
+    def error(self):
+        raise Exception('Invalid character')
 
+    def advance(self):
+        self.pos += 1
+        if self.pos > len(self.text) - 1:
+            self.current_char = None  # End of input
+        else:
+            self.current_char = self.text[self.pos]
+
+    def skip_whitespace(self):
+        while self.current_char is not None and self.current_char.isspace():
+            self.advance()
+    
     def integer(self):
-        ###return a (multidigit) integer consumed from the input###
-        result = ' '
+        result = ""
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
-            self.advance
+            self.advance()
         return int(result)
-
-    def error(self):
-        raise Exception('Error parsing input')
-
+    
     def get_next_token(self):
-        """Lexical analyzer (tokenizer)"""
-        while self.curremt_char is not None:
-            if self.currnet_char.isspace():
+        while self.current_char is not None:
+            if self.current_char.isspace():
                 self.skip_whitespace()
                 continue
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
-            if self.current_char == '+':
+            if self.current_char == '*':
                 self.advance()
-                return Token(PLUS, '+')
-            if self.current_char == '-':
+                return Token(MUL, '*')
+            if self.current_char == '/':
                 self.advance()
-                return Token(MINUS, '-')
-            
-          self.error()
-           
+                return Token(DIV, '/')
+            self.error()
         return Token(EOF, None)
-        
-        current_char = self.text[self.pos]
-        
-        # Handle multi-digit integers
-        if current_char.isdigit():
-            num_str = ''
-            while self.pos < len(self.text) and self.text[self.pos].isdigit():
-                num_str += self.text[self.pos]
-                self.pos += 1
-            return Token(INTEGER, int(num_str))
-        
-        if current_char == '+':
-            token = Token(PLUS, current_char)
-            self.pos += 1
-            return token
-        
-        self.error()
+    
+class Interpreter:
+    def __init__(self, text):
+        self.lexer = Lexer(text)
+        self.current_token = self.lexer.get_next_token()
+    
+    def error(self):
+        raise Exception('Invalid syntax')
 
     def eat(self, token_type):
-        """Compare the current token type with the passed token type and if they match, eat the current token"""
         if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
+            self.current_token = self.lexer.get_next_token()
         else:
             self.error()
-
+    
+    def factor(self):
+        token = self.current_token
+        self.eat(INTEGER)
+        return token.value
+    
     def expr(self):
-        """parsing / interpreter
-            expr -> integer plus integer
-            expr -> integer minu integer
-            """
-        self.current_token = self.get_next_token()
+        result = self.factor()
         
-        # We expect the current token to be an integer
-        left = self.current_token
-        self.eat(INTEGER)
-        
-        # We expect the current token to be a PLUS
-        op = self.current_token
-        self.eat(PLUS)
-        if op.type == PLUS:
-            self.eat(PLUS)
-        else:
-            self.eat(MINUS)
-        
-        # We expect the current token to be an integer
-        right = self.current_token
-        self.eat(INTEGER)
-        if op.type == PLUS:
-            result = left.value + right.value
-        else:
-            result = left.value - right.value
-        
-        # The result of adding the two integers
-        
-        return result
+        while self.current_token.type in (MUL, DIV):
+            token = self.current_token
+            if token.type == MUL:
+                self.eat(MUL)
+                result = result * self.factor()
+            elif token.type == DIV:
+                self.eat(DIV)
+                result = result // self.factor()
 
+        return result
+    
 def main():
     while True:
         try:
-            text = input('calc> ')
-        except EOFError:
-            break
-        if not text:
-            continue
-        interpreter = Interpreter(text)
-        result = interpreter.expr()
-        print(result)
+            text = input("calc> ")
+            interpreter = Interpreter(text)
+            result = interpreter.expr()
+            print(result)
+        except Exception as e:
+            print(e)
 
 if __name__ == '__main__':
     main()
