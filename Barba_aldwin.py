@@ -9,9 +9,11 @@ class Token:
     def __repr__(self):
         return self.__str__()
 
-INTEGER, MUL, DIV, EOF = 'INTEGER', 'MUL', 'DIV', 'EOF'
 
-class Lexer(object):
+INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
+
+
+class Lexer:
     def __init__(self, text):
         self.text = text
         self.pos = 0
@@ -30,14 +32,14 @@ class Lexer(object):
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
-    
+
     def integer(self):
         result = ""
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
             self.advance()
         return int(result)
-    
+
     def get_next_token(self):
         while self.current_char is not None:
             if self.current_char.isspace():
@@ -45,6 +47,12 @@ class Lexer(object):
                 continue
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
+            if self.current_char == '+':
+                self.advance()
+                return Token(PLUS, '+')
+            if self.current_char == '-':
+                self.advance()
+                return Token(MINUS, '-')
             if self.current_char == '*':
                 self.advance()
                 return Token(MUL, '*')
@@ -53,12 +61,13 @@ class Lexer(object):
                 return Token(DIV, '/')
             self.error()
         return Token(EOF, None)
-    
+
+
 class Interpreter:
     def __init__(self, text):
         self.lexer = Lexer(text)
         self.current_token = self.lexer.get_next_token()
-    
+
     def error(self):
         raise Exception('Invalid syntax')
 
@@ -67,15 +76,15 @@ class Interpreter:
             self.current_token = self.lexer.get_next_token()
         else:
             self.error()
-    
+
     def factor(self):
         token = self.current_token
         self.eat(INTEGER)
         return token.value
-    
-    def expr(self):
+
+    def term(self):
+        """term : factor ((MUL | DIV) factor)*"""
         result = self.factor()
-        
         while self.current_token.type in (MUL, DIV):
             token = self.current_token
             if token.type == MUL:
@@ -84,18 +93,34 @@ class Interpreter:
             elif token.type == DIV:
                 self.eat(DIV)
                 result = result // self.factor()
-
         return result
-    
+
+    def expr(self):
+        """expr : term ((PLUS | MINUS) term)*"""
+        result = self.term()
+        while self.current_token.type in (PLUS, MINUS):
+            token = self.current_token
+            if token.type == PLUS:
+                self.eat(PLUS)
+                result = result + self.term()
+            elif token.type == MINUS:
+                self.eat(MINUS)
+                result = result - self.term()
+        return result
+
+
 def main():
     while True:
         try:
             text = input("calc> ")
+            if not text.strip():
+                continue
             interpreter = Interpreter(text)
             result = interpreter.expr()
             print(result)
         except Exception as e:
             print(e)
+
 
 if __name__ == '__main__':
     main()
