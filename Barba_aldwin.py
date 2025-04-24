@@ -188,7 +188,7 @@ def main():
     while True:
         try:
             text = input('spi> ')
-        except EOFError:
+        except NameError:
             break
         if not text:
             continue
