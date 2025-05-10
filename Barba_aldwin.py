@@ -24,10 +24,9 @@ class Lexer(object):
         raise Exception('Invalid character')  
 
     def advance(self):  
-        """Advance the pos pointer and set the current_char variable."""  
         self.pos += 1  
         if self.pos > len(self.text) - 1:  
-            self.current_char = None  # Indicates end of input  
+            self.current_char = None  
         else:  
             self.current_char = self.text[self.pos]  
 
@@ -36,7 +35,6 @@ class Lexer(object):
             self.advance()  
 
     def integer(self):  
-        """Return a (multidigit) integer consumed from the input."""  
         result = ''  
         while self.current_char is not None and self.current_char.isdigit():  
             result += self.current_char  
@@ -44,7 +42,6 @@ class Lexer(object):
         return int(result)  
 
     def get_next_token(self):  
-        """Lexical analyzer (also known as scanner or tokenizer)."""  
         while self.current_char is not None:  
             if self.current_char.isspace():  
                 self.skip_whitespace()  
@@ -72,6 +69,24 @@ class Lexer(object):
             self.error()  
         return Token(EOF, None)  
 
+class AST(object):
+    pass
+
+class BinOp(AST):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+class Num(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
+class UnaryOp(AST):
+    def __init__(self, op, expr):
+        self.token = self.op = op
+        self.expr = expr
 
 class Parser(object):  
     def __init__(self, lexer):  
@@ -82,7 +97,6 @@ class Parser(object):
         raise Exception('Invalid syntax')  
 
     def eat(self, token_type):  
-        """Compare the current token type with the passed token type and if they match then 'eat' the current token."""  
         if self.current_token.type == token_type:  
             self.current_token = self.lexer.get_next_token()  
         else:  
@@ -105,13 +119,9 @@ class Parser(object):
             self.eat(LPAREN)
             node = self.expr()
             self.eat(RPAREN)
-            return node
-
-
             return node  
 
     def term(self):  
-        """term: factor ((MUL | DIV) factor)*"""  
         node = self.factor()  
         while self.current_token.type in (MUL, DIV):  
             token = self.current_token  
@@ -119,13 +129,10 @@ class Parser(object):
                 self.eat(MUL)  
             elif token.type == DIV:  
                 self.eat(DIV)  
-
             node = BinOp(left=node, op=token, right=self.factor())
-
         return node  
 
     def expr(self):  
-        """Arithmetic expression parser/interpreter."""  
         node = self.term()  
         while self.current_token.type in (PLUS, MINUS):  
             token = self.current_token  
@@ -133,37 +140,20 @@ class Parser(object):
                 self.eat(PLUS)  
             elif token.type == MINUS:  
                 self.eat(MINUS)  
-            
             node = BinOp(left=node, op=token, right=self.term())
         return node  
     
     def parse(self):
         return self.expr()
 
-class AST(object):
-    pass
-
-class BinOp(AST):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.token = self.op = op
-        self.right = right
-
-class Num(AST):
-    def __init__(self, token):
-        self.token = token
-        self.value = token.value
-
 class NodeVisitor(object):
     def visit(self, node):
         method_name = 'visit_' + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
-
         return visitor(node)
 
     def generic_visit(self, node):
         raise Exception('No visit_{} method'.format(type(node).__name__))
-
 
 class Interpreter(NodeVisitor):
     def __init__(self, parser):
@@ -185,7 +175,7 @@ class Interpreter(NodeVisitor):
             return +self.visit(node.expr)
         elif op == MINUS:
             return -self.visit(node.expr)
-        
+
     def visit_Num(self, node):
         return node.value
 
@@ -193,21 +183,22 @@ class Interpreter(NodeVisitor):
         tree = self.parser.parse()
         return self.visit(tree)
 
-class UnaryOp(AST):
-    def __init__(self, op, expr):
-        self.token = self.op = op
-        self.expr = expr
-        
-if __name__ == '__main__':  
+if __name__ == '__main__':
     while True:
         try:
             try:
-                text = raw_input('spi>')
+                text = raw_input('spi> ')
             except NameError:
-                text = input('spi>')
-
+                text = input('spi> ')
         except EOFError:
             break
+        if not text:
+            continue
+        lexer = Lexer(text)
+        parser = Parser(lexer)
+        interpreter = Interpreter(parser)
+        result = interpreter.interpret()
+        print(result)
         if not text:
             print('XX')
             continue
